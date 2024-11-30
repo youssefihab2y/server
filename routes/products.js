@@ -2,30 +2,46 @@ const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
 
-// Debugging middleware
+// Router-level debugging middleware
 router.use((req, res, next) => {
-  console.log('API Request:', {
-    method: req.method,
-    url: req.originalUrl,
-    params: req.params,
-    query: req.query,
-    body: req.body
-  });
+  console.log('=== Products Router ===');
+  console.log('Original URL:', req.originalUrl);
+  console.log('Base URL:', req.baseUrl);
+  console.log('Path:', req.path);
+  console.log('===================');
   next();
 });
 
-// Get all products
-router.get('/', async (req, res) => {
+// GET /api/products/type/:typeId
+router.get('/type/:typeId', async (req, res) => {
+  console.log('Type route hit with typeId:', req.params.typeId);
   try {
-    const [products] = await db.query('SELECT * FROM products');
-    res.json({ data: products });
+    const { typeId } = req.params;
+    const query = `
+      SELECT *
+      FROM products 
+      WHERE type_id = ?
+      ORDER BY created_at DESC
+    `;
+
+    const [products] = await db.query(query, [typeId]);
+    console.log(`Found ${products.length} products for type ${typeId}`);
+    
+    return res.json({ 
+      success: true,
+      data: products 
+    });
   } catch (error) {
-    console.error('Server Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Type route error:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Internal server error',
+      error: error.message 
+    });
   }
 });
 
-// Get products by category_id
+// GET /api/products/category/:categoryId
 router.get('/category/:categoryId', async (req, res) => {
   try {
     const { categoryId } = req.params;
@@ -51,7 +67,7 @@ router.get('/category/:categoryId', async (req, res) => {
   }
 });
 
-// Get search results
+// GET /api/products/search
 router.get('/search', async (req, res) => {
   try {
     const { q } = req.query;
@@ -79,7 +95,18 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// Get single product
+// GET /api/products
+router.get('/', async (req, res) => {
+  try {
+    const [products] = await db.query('SELECT * FROM products');
+    res.json({ data: products });
+  } catch (error) {
+    console.error('Server Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/products/:id (MUST be last)
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -117,6 +144,36 @@ router.get('/:id', async (req, res) => {
     console.error('Server Error:', error);
     res.status(500).json({ 
       status: 'error',
+      message: 'Internal server error',
+      error: error.message 
+    });
+  }
+});
+
+// Add this new route for combined filtering
+router.get('/category/:categoryId/type/:typeId', async (req, res) => {
+  console.log('Combined category/type route hit:', req.params);
+  try {
+    const { categoryId, typeId } = req.params;
+    const query = `
+      SELECT p.*, c.name as category_name
+      FROM products p
+      LEFT JOIN categories c ON p.category_id = c.id
+      WHERE p.category_id = ? AND p.type_id = ?
+      ORDER BY p.created_at DESC
+    `;
+
+    const [products] = await db.query(query, [categoryId, typeId]);
+    console.log(`Found ${products.length} products for category ${categoryId} and type ${typeId}`);
+    
+    return res.json({ 
+      success: true,
+      data: products 
+    });
+  } catch (error) {
+    console.error('Combined filter route error:', error);
+    return res.status(500).json({ 
+      success: false,
       message: 'Internal server error',
       error: error.message 
     });
