@@ -11,7 +11,17 @@ router.use((req, res, next) => {
   console.log('===================');
   next();
 });
-
+// GET /api/products
+router.get('/', async (req, res) => {
+  try {
+    const [products] = await db.query('SELECT * FROM products');
+    console.log('Fetched products:', products); // Log the fetched products
+    res.json({ data: products }); // Ensure the response format matches what the client expects
+  } catch (error) {
+    console.error('Server Error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 // GET /api/products/type/:typeId
 router.get('/type/:typeId', async (req, res) => {
   console.log('Type route hit with typeId:', req.params.typeId);
@@ -95,16 +105,6 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// GET /api/products
-router.get('/', async (req, res) => {
-  try {
-    const [products] = await db.query('SELECT * FROM products');
-    res.json({ data: products });
-  } catch (error) {
-    console.error('Server Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 // GET /api/products/:id (MUST be last)
 router.get('/:id', async (req, res) => {
