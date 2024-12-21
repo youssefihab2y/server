@@ -4,14 +4,17 @@ const productsRouter = require('./routes/products');
 const checkoutRouter = require('./routes/checkout');
 require('dotenv').config();
 const path = require('path');
+const authRoutes = require('./routes/auth');
+const ordersRouter = require('./routes/orders');
 
 const app = express();
 
 // Update CORS configuration
 app.use(cors({
-  origin: 'http://localhost:3000', // Your React app's URL
+  origin: 'http://localhost:3000', // Frontend URL
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Accept']
 }));
 
 app.use(express.json());
@@ -29,6 +32,8 @@ app.use((req, res, next) => {
 // Routes
 app.use('/api/products', productsRouter);
 app.use('/api/checkout', checkoutRouter);
+app.use('/api/auth', authRoutes);
+app.use('/api/orders', ordersRouter);
 
 // Serve static files
 app.use('/images/Products', express.static(path.join(__dirname, 'public/images/Products')));
