@@ -11,10 +11,10 @@ const app = express();
 
 // Update CORS configuration
 app.use(cors({
-  origin: 'http://localhost:3000', // Frontend URL
+  origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Accept']
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization']
 }));
 
 app.use(express.json());
@@ -26,6 +26,8 @@ app.use((req, res, next) => {
     params: req.params,
     query: req.query
   });
+  console.log('Request Body:', req.body);
+  console.log('Request Headers:', req.headers);
   next();
 });
 
@@ -43,11 +45,11 @@ console.log('Static files path:', path.join(__dirname, 'public/images/Products')
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Server Error:', err.stack);
-  res.status(500).json({ 
+  console.error('Server Error:', err);
+  res.status(500).json({
     success: false,
-    message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
 });
 

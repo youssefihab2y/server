@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const db = require('../config/database');
+const jwt = require('jsonwebtoken');
 
 // Login route
 router.post('/login', async (req, res) => {
@@ -30,12 +31,22 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    console.log('Generated token:', token); // This will show the token in server logs
+
     // Don't send password in response
     delete user.password;
     
     res.json({
       success: true,
-      user
+      user,
+      token // Send token in response
     });
   } catch (error) {
     console.error('Login error:', error);

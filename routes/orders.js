@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sendOrderConfirmation } = require('../utils/emailService');
+const db = require('../config/database');
 
 console.log('Initializing orders router');
 
@@ -10,77 +10,87 @@ router.get('/test', (req, res) => {
   res.json({ message: 'Orders route is working' });
 });
 
-// Test email route
-router.post('/test-email', (req, res) => {
-  console.log('POST /test-email route hit');
-  console.log('Request body:', req.body);
-  
+
+// Updated GET order by ID
+router.get('/:orderId', async (req, res) => {
   try {
-    const { email } = req.body;
-    
-    if (!email) {
-      return res.status(400).json({
+    const [order] = await db.query(
+      `SELECT * FROM orders WHERE id = ?`,
+      [req.params.orderId]
+    );
+
+    if (!order) {
+      return res.status(404).json({
         success: false,
-        message: 'Email is required'
+        message: 'Order not found'
       });
     }
 
-    const testOrder = {
-      email: email,
-      firstName: "Yossef",
-      lastName: "Ehab",
-      orderId: "TEST" + Date.now(),
-      orderItems: [
-        {
-          id: 1,
-          name: "Test Product 1",
-          size: "XL",
-          quantity: 2,
-          price: "29.99"
-        }
-      ],
-      subtotal: "79.97",
-      shipping: "10.00",
-      tax: "8.00",
-      total: "97.97",
-      address: "alex",
-      city: "alex",
-      postalCode: "93939933"
-    };
+    const [orderItems] = await db.query(
+      `SELECT 
+        oi.*,
+        p.name AS product_name,
+        p.price AS product_price,
+        pi.image_url AS product_image
+      FROM order_items oi
+      INNER JOIN products p ON oi.product_id = p.id
+      LEFT JOIN product_images pi ON p.id = pi.product_id
+      WHERE oi.order_id = ?`,
+      [req.params.orderId]
+    );
 
-    console.log('Attempting to send email...');
-    
-    sendOrderConfirmation(testOrder)
-      .then(emailSent => {
-        if (emailSent) {
-          res.json({ 
-            success: true, 
-            message: 'Test email sent successfully',
-            sentTo: email,
-            orderDetails: testOrder
-          });
-        } else {
-          res.status(500).json({ 
-            success: false, 
-            message: 'Failed to send test email' 
-          });
-        }
-      })
-      .catch(error => {
-        console.error('Email error:', error);
-        res.status(500).json({ 
-          success: false, 
-          message: 'Failed to send test email',
-          error: error.message 
-        });
-      });
+    res.json({
+      success: true,
+      data: {
+        ...order,
+        orderItems
+      }
+    });
 
   } catch (error) {
-    console.error('Route error:', error);
+    console.error('Get order error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get order',
+      error: error.message
+    });
+  }
+});
+
+// Updated GET orders by user ID
+router.get('/user/:userId', async (req, res) => {
+  try {
+    // First get all orders for the user
+    const [orders] = await db.query(`
+      SELECT * FROM orders 
+      WHERE user_id = ? 
+      ORDER BY created_at DESC
+    `, [req.params.userId]);
+
+    // Get order items with product details for all orders
+    const ordersWithItems = await Promise.all(orders.map(async (order) => {
+      const [items] = await db.query(`
+        SELECT oi.*, p.name, p.image_url
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ?
+      `, [order.id]);
+
+      return {
+        ...order,
+        orderItems: items
+      };
+    }));
+
+    res.json({
+      success: true,
+      data: ordersWithItems
+    });
+  } catch (error) {
+    console.error('Error fetching user orders:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Failed to process request',
-      error: error.message 
+      message: error.message 
     });
   }
 });
