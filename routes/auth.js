@@ -2,8 +2,6 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const db = require('../config/database');
-const jwt = require('jsonwebtoken');
-
 // Login route
 router.post('/login', async (req, res) => {
   try {
@@ -18,7 +16,6 @@ router.post('/login', async (req, res) => {
         message: 'Invalid email or password' 
       });
     }
-
     const user = users[0];
     
     // Compare password
@@ -30,23 +27,12 @@ router.post('/login', async (req, res) => {
         message: 'Invalid email or password' 
       });
     }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    console.log('Generated token:', token); // This will show the token in server logs
-
     // Don't send password in response
     delete user.password;
     
     res.json({
       success: true,
-      user,
-      token // Send token in response
+      user
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -56,7 +42,6 @@ router.post('/login', async (req, res) => {
     });
   }
 });
-
 // Register route
 router.post('/register', async (req, res) => {
   try {
@@ -94,5 +79,4 @@ router.post('/register', async (req, res) => {
     });
   }
 });
-
 module.exports = router; 
