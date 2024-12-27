@@ -1,15 +1,18 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
+require('dotenv').config();
+
+// Import routes
 const productsRouter = require('./routes/products');
 const checkoutRouter = require('./routes/checkout');
-require('dotenv').config();
-const path = require('path');
 const authRoutes = require('./routes/auth');
 const ordersRouter = require('./routes/orders');
+const chatbotRoutes = require('./routes/chatbot');
 
 const app = express();
 
-// Update CORS configuration
+// Middleware
 app.use(cors({
   origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -19,15 +22,10 @@ app.use(cors({
 
 app.use(express.json());
 
-// Debugging middleware for all requests
+// Debug middleware
 app.use((req, res, next) => {
-  console.log(`${req.method} Request to ${req.url}`, {
-    body: req.body,
-    params: req.params,
-    query: req.query
-  });
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   console.log('Request Body:', req.body);
-  console.log('Request Headers:', req.headers);
   next();
 });
 
@@ -36,14 +34,14 @@ app.use('/api/products', productsRouter);
 app.use('/api/checkout', checkoutRouter);
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', ordersRouter);
+app.use('/api/chatbot', chatbotRoutes);
 
-// Serve static files
-app.use('/images/Products', express.static(path.join(__dirname, 'public/images/Products')));
-app.use('/images', express.static(path.join(__dirname, 'public/images')));
+// Test route to verify server is working
+app.get('/test', (req, res) => {
+  res.json({ message: 'Server is running' });
+});
 
-console.log('Static files path:', path.join(__dirname, 'public/images/Products'));
-
-// Error handling middleware
+// Error handling
 app.use((err, req, res, next) => {
   console.error('Server Error:', err);
   res.status(500).json({
@@ -53,11 +51,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Handle 404 errors
+// 404 handler - this should be last
 app.use((req, res) => {
-  res.status(404).json({ 
+  console.log('404 Not Found:', req.method, req.url);
+  res.status(404).json({
     success: false,
-    message: 'Route not found' 
+    message: 'Route not found'
   });
 });
 
@@ -65,4 +64,4 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`API endpoints available at http://localhost:${PORT}/api`);
-}); 
+});
